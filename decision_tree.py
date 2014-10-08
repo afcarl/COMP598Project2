@@ -1,6 +1,7 @@
 import numpy as np
 import random
 from collections import Counter
+import copy
 
 class DecisionTree(object):
 	''' Implementation on the decision tree classifier. Supports binary, discrete, 
@@ -21,6 +22,7 @@ class DecisionTree(object):
 			# Initialize nodes that will go to upon the outcome of a test.
 			self.false_node = None
 			self.true_node = None
+			self.parent = None
 			# Save the test function.
 			self.test_function = test_function
 			# Calculate sample distribution.
@@ -105,8 +107,8 @@ class DecisionTree(object):
 		get_feature_types()
 		get_number_classes()
 		#TODO: TEST Build the tree with train % of the data.
-		#self.predict_tree = build_tree(data[:data.shape[0]*self.train_size,:])
-		self.predict_tree = self.build_tree(data)
+		self.predict_tree =self.build_tree(data[:data.shape[0]*self.train_size,:])
+		#self.predict_tree = self.build_tree(data)
 		#TODO: TEST Prune the tree with test % of the data.
 		self.prune(data[data.shape[0]*self.train_size:, :])
 		
@@ -162,7 +164,8 @@ class DecisionTree(object):
 		best_true = None
 		best_false = None
 		if base_entropy == 0:
-			return DecisionTree.TreeNode(None, data, self.num_classes) 
+			node = DecisionTree.TreeNode(None, data, self.num_classes) 
+			return node
 		for i in xrange(0, data.shape[1]-1):
 			result = split_data_on_feature(data, i)
 			if result == -1:
@@ -183,6 +186,8 @@ class DecisionTree(object):
 		# Recurse on branches of best test.
 		false_node = self.build_tree(best_false)
 		true_node = self.build_tree(best_true)
+		false_node.parent = best_test
+		true_node.parent = best_test
 		best_test.false_node = false_node
 		best_test.true_node = true_node
 		return best_test
@@ -204,18 +209,46 @@ class DecisionTree(object):
 			@param tree
 			@return
 			'''
-			#TODO: Calculate and return accuracy.
-			pass
+			num_correct = 0
+			for ex in test_data:
+				if (self.classify(ex[:-1], p_tree) == ex[-1]):
+					num_correct += 1
+			return num_correct / float(test_data.shape[0])
 		#TODO: Loop removing leaf tests until test accuracy stops improving.
-		pass
+		return
+		best_accuracy = calculate_accuracy(self.predict_tree)
+		best_tree = self.predict_tree
+		prev_tree = copy.deepcopy(self.predict_tree)
+		while True:
+			cur_tree = copy.deepcopy(prev_tree)
+			prev_accuracy = best_accuracy
+			for leaf in cur_tree.leaf_nodes:
+				cur_tree = copy.deepcopy(self.predict_tree)
+				if (leaf.parent == leaf.parent.false_node):
+					leaf.parent.false_node == None
+				else:
+					leaf.parent.true_node = None
+				cur_accuracy = calculate_accuracy(cur_tree)
+				if cur_accuracy > best_accuracy:
+					best_accuracy = cur_accuracy
+					best_tree = cur_tree
+					break
+			print best_accuracy
+			if prev_accuracy >= best_accuracy:
+				break
+				
+		self.predict_tree = best_tree
+		print initial_accuracy
 		
-	def classify(self, instance):
+	def classify(self, instance, tree=None):
 		''' Given an unseen instance, classify it using the trained tree.
 		@param instance
 		@return
 		'''
+		if (tree == None):
+			tree = self.predict_tree
 		# Predict the class of instance.
-		node = self.predict_tree
+		node = tree
 		while (not node.is_leaf()):
 			if node.perform_test(instance) == True:
 				node = node.true_node
