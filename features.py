@@ -27,6 +27,9 @@ def sortMap(countMap):
 
 def getFeatures():
 	for name in ("test", "train"):
+		if not os.path.exists(name + "_features"):
+		    os.makedirs(name + "_features")
+
 		# Create full map of words
 		with open(name + "_input.csv") as f:
 			# get list of all words that exist
