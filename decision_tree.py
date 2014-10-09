@@ -67,14 +67,13 @@ class DecisionTree(object):
 		self.test_size = test_size
 		self.train_size = 1 - test_size
 		#TODO: Include option to generate graphs (pruning graphs).
-		pass
 	
-	def train(self, data):
+	def fit(self, train_xs, train_ys):
 		''' Given a m*n matrix containing training instances, construct the tree using a greedy
 		algorithm to maximize information gain for the classifier.
 		@param data m*n matrix containing the training instances.
 		'''
-		def get_feature_types():
+		def get_feature_types(data):
 			''' Checks each column of the data set to check if its a binary, discrete, or continous feature. 
 			Populates self.feature_types where the key is the index of the column and the value is either 
 			BIN, DISC, or CONT.
@@ -96,23 +95,26 @@ class DecisionTree(object):
 				else:
 					self.feature_types[ix] = 'DISC'
 		
-		def get_number_classes():
+		def get_number_classes(data):
 			''' Count the number of classes in the training set. Stores result in self.num_classes. '''
 			classes = []
 			for entry in data[:, -1]:
 				if entry not in classes:
 					classes.append(entry)
 			self.num_classes = max(classes) + 1
-								
-		get_feature_types()
-		get_number_classes()
-		#TODO: TEST Build the tree with train % of the data.
+		print train_xs.shape
+		train_ys = train_ys.reshape((train_ys.shape[0], 1))
+		data = np.append(train_xs, train_ys, 1)
+		print data.shape
+		get_feature_types(data)
+		get_number_classes(data)
+		# Build the tree with train % of the data.
 		self.predict_tree =self.build_tree(data[:data.shape[0]*self.train_size,:])
 		#self.predict_tree = self.build_tree(data)
-		#TODO: TEST Prune the tree with test % of the data.
+		# Prune the tree with test % of the data.
 		self.prune(data[data.shape[0]*self.train_size:, :])
 		
-	def build_tree(self, data):
+	def build_tree(self, data, depth = 0):
 		''' Recusively build a tree by calculating information gain for a test on each feature.
 		Then select the feature that maximizes IG and build sub-trees for the data split on 
 		this test. Recurses until classification is perfect.
@@ -183,13 +185,17 @@ class DecisionTree(object):
 		# If perfect classification, stop.
 		if Counter(best_test.class_dist)[0] == len(best_test.class_dist) - 1:
 			return best_test
+		if depth > 100:
+			return best_test
 		# Recurse on branches of best test.
-		false_node = self.build_tree(best_false)
-		true_node = self.build_tree(best_true)
-		false_node.parent = best_test
-		true_node.parent = best_test
-		best_test.false_node = false_node
-		best_test.true_node = true_node
+		if len(best_false) > 0:
+			false_node = self.build_tree(best_false, depth + 1)
+			false_node.parent = best_test
+			best_test.false_node = false_node
+		if len(best_true) > 0:	
+			true_node = self.build_tree(best_true, depth + 1)	
+			true_node.parent = best_test
+			best_test.true_node = true_node
 		return best_test
 	
 	def prune(self, test_data):
@@ -202,7 +208,6 @@ class DecisionTree(object):
 			@param test
 			@return 
 			'''
-			#TODO: Find and remove test from the tree.
 			# Recursively traverse the tree. If we're not a leaf, find the best accuracy from removing leaves in this sub tree.
 			if not p_test.is_leaf():
 				if p_test.false_node != None:
@@ -236,10 +241,9 @@ class DecisionTree(object):
 			'''
 			num_correct = 0
 			for ex in test_data:
-				if (self.classify(ex[:-1], p_tree) == ex[-1]):
+				if (self.predict(ex[:-1], p_tree) == ex[-1]):
 					num_correct += 1
 			return num_correct / float(test_data.shape[0])
-		#TODO: Loop removing leaf tests until test accuracy stops improving.		
 		# Loop until accuracy stops improving
 		initial_accuracy = calculate_accuracy(self.predict_tree)
 		print initial_accuracy
@@ -251,7 +255,7 @@ class DecisionTree(object):
 		print new_accuracy
 		self.predict_tree = new_tree
 		
-	def classify(self, instance, tree=None):
+	def predict(self, instance, tree=None):
 		''' Given an unseen instance, classify it using the trained tree.
 		@param instance
 		@return
@@ -297,7 +301,7 @@ def test_boolean_functions():
 	dt.train(data_long)
 	for test in data_long:
 		features = test[:-1]
-		print dt.classify(features) == test[-1]
+		print dt.predict(features) == test[-1]
 
 if __name__ == '__main__':
 	dt = DecisionTree()
@@ -309,10 +313,6 @@ if __name__ == '__main__':
 	#dt.train(data_five_classes)
 	#for test in data_five_classes:
 	#features = test[:-1]
-	#print dt.classify(features) == test[-1]
+	#print dt.predict(features) == test[-1]
 	test_boolean_functions()
-	#TODO: Build train/test dataset.
-	#TODO: Train decision tree.
-	#TODO: Predct on test dataset.
-	#TODO: Report results.
 	
