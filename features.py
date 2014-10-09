@@ -2,7 +2,8 @@ from collections import Counter, OrderedDict
 import operator
 import csv
 import string
-
+import os
+import pickle
 
 def cleanWords(w):
 	lowerW = w.lower()
@@ -53,10 +54,10 @@ def getFeatures():
 		    headerWr.writerow(["id"] + allKeys)
 
 		# Get word count for each abstract
-		with open(name + "_input.csv") as f, open(name + "_features/features.csv", 'wb') as featuresf:
+		with open(name + "_input.csv") as f, open(name + "_features/features.p", 'wb') as pf:
 			# get individual word count for each abstract
 			csvReader = csv.reader(f, delimiter= ',')
-			csvWriter = csv.writer(featuresf)
+			CountsList = []
 
 			for (num, abstract) in csvReader:
 				if num == "id":
@@ -64,10 +65,13 @@ def getFeatures():
 				absCount = Counter(filterWords(abstract.split()))
 				absDict = dict(absCount)
 
-				filledCount = sortMap(fillMap(absDict, allKeys))
-				valsToWrite = [v for (k, v) in filledCount]
+				# filledCount = sortMap(fillMap(absDict, allKeys))
+				# valsToWrite = [v for (k, v) in filledCount]
+				# csvWriter.writerow([num] + valsToWrite)
 
-				csvWriter.writerow([num] + valsToWrite)
+				CountsList.append([absDict])
+				print "adding row for " + str(num)
+			pickle.dump( CountsList, pf)
 
 if __name__ == '__main__':
 	getFeatures()
