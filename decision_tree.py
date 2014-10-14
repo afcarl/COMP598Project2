@@ -112,7 +112,7 @@ class DecisionTree(object):
 		self.predict_tree =self.build_tree(data[:data.shape[0]*self.train_size,:])
 		#self.predict_tree = self.build_tree(data)
 		# Prune the tree with test % of the data.
-		self.prune(data[data.shape[0]*self.train_size:, :])
+		#self.prune(data[data.shape[0]*self.train_size:, :])
 		
 	def build_tree(self, data, depth = 0):
 		''' Recusively build a tree by calculating information gain for a test on each feature.
@@ -185,7 +185,7 @@ class DecisionTree(object):
 		# If perfect classification, stop.
 		if Counter(best_test.class_dist)[0] == len(best_test.class_dist) - 1:
 			return best_test
-		if depth > 3:
+		if depth > 10:
 			return best_test
 		# Recurse on branches of best test.
 		if len(best_false) > 0:
