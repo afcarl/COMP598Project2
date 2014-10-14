@@ -1,0 +1,14 @@
+To run the naive feature extraction:
+
+
+python word_counter.py
+
+creates three files:
+header.csv
+train_examples.csv
+test_examples.csv
+
+
+To run the baseline algorithm:
+
+python naive_bayes.py
