@@ -13,7 +13,7 @@ from matplotlib import pyplot as plt
 
 def generate_submission_bigrams(classifier, transform):
 
-	sub = open('submission_bigram_lr.csv', 'w')
+	sub = open('submission_bigram_lr_weighted.csv', 'w')
 	sub.write('"id","category"\n')
 	
 	i = 0
@@ -33,18 +33,17 @@ def generate_submission_bigrams(classifier, transform):
 		i += 1
 		print i
 	sub.close()		
-
-def generate_ngrams(corpus, l,h, cutoff, lsa=False, count=False):
+import copy
+def generate_ngrams(corpus, test_corpus, l,h, cutoff, lsa=False, count=False):
 	stopwords = ['to', 'the', 'between', 'recent', 'work', 'than', 'for', 'we', 'well', 'what', 'when', 'are', 'be', 'they', 'would', 'will', 'each', 'do', 'our', 'very', 'these', 'then', 'can', 'have', 'new', 'not', 'such', 'some', 'so', 'show', 'only', 'one', 'more', 'used', 'using', 'both', 'there', 'no', 'use', 'from', 'more', 'less', 'also','because', 'allow', 'allowed', 'allowing', 'affect', 'apply', 'give', 'become', 'where', 'were', 'while', 'many', 'most', 'about', 'like', 'after', 'before', 'all', 'even', 'ever', 'other', 'within', 'widely', 'whose', 'whether', 'useful', 'over', 'under', 'two', 'every', 'without', 'usually', 'through', 'three', 'those', 'thereby', 'therefore', 'suitable', 'suggest', 'suggested','study', 'still', 'since', 'given', 'several', 'same', 'propose', 'proposed', 'provide', 'provided', 'previously', 'present', 'presented', 'often', 'obtain', 'obtained', 'effective', 'made', 'highly', 'here', 'another','approach', 'article','based','being','called', 'cannot', 'case', 'consider', 'define', 'defined', 'denote', 'describe', 'describing', 'develop', 'developed', 'different', 'during', 'early', 'et', 'further', 'having', 'improve', 'important', 'into', 'introduce', 'known']
 	# So numbers aren't included.
 	for i in xrange(0, 10000):
 		stopwords.append(str(i))
 	n = 1
-	
 	if count == True:
 		v = CountVectorizer(ngram_range=(l,h), max_features=cutoff,stop_words=set(stopwords))
 	else:
-		v = TfidfVectorizer(ngram_range=(l,h), max_features=cutoff,stop_words=set(stopwords))
+		v = TfidfVectorizer(ngram_range=(l,h), min_df=cutoff,stop_words=set(stopwords))
 	
 	d = v.fit_transform(corpus)	
 	if not lsa:
@@ -106,26 +105,29 @@ def oversample_stats(train_xs, train_ys):
 from sklearn.metrics import roc_curve
 def run_k_folds_number_features(corpus, ys, classifier, k, low, high):
 	x_folds, y_folds = get_folds(corpus, ys, k)
-	for size in xrange(50000, 75001, 5000):
+	for size in [0.00015, 0.0005,0.0010,0.005,0.20,0.25]:
 		overall_accuracy = 0
 		for i in xrange(0, k):
-		
+			
 			train_xs, test_xs, train_ys, test_ys = get_train_and_test(x_folds, y_folds, i, k)
 			#train_xs, train_ys = oversample_stats(train_xs, train_ys)
 			print "FOLD", i
-			train_xs, transform = generate_ngrams(train_xs, low, high, size, False)
+			train_xs, transform = generate_ngrams(train_xs, test_xs, low, 3, size, False)
+			print len(transform.get_feature_names())
+			#print transform.get_feature_names()
 			matrix = transform.transform(test_xs)
 			z = 0
 			classifier.fit(train_xs, train_ys)
 			num_correct = 0
 			wrong_dict = {0:0, 1:0, 2:0, 3:0}
-			probs = classifier.predict_proba(matrix)
+			#probs = classifier.predict_proba(matrix)
 			for entry in matrix:
 				if classifier.predict(entry) == test_ys[z]:
 					num_correct += 1
 				else:
 					wrong_dict[test_ys[z]] += 1
 				z += 1
+				print float(num_correct)/z
 			'''
 			fpr = dict()
 			tpr = dict()
@@ -233,13 +235,13 @@ def run_k_folds_custom_dt(corpus, ys, k):
 	overall_accuracy /= float(k)
 	print "Overall: %f" % (rep, overall_accuracy)
 if __name__ == "__main__":
-	knn = neighbors.KNeighborsClassifier(50, weights='distance', metric=smp.cosine_similarity)
+	knn = neighbors.KNeighborsClassifier(40)
 	nb = naive_bayes.GaussianNB()
 	dt = tree.DecisionTreeClassifier(criterion='entropy', max_depth=10)
 	sv = linear_model.SGDClassifier()
 	svc = svm.LinearSVC()
 	lr = linear_model.LogisticRegression()
-	classifier = nb
+	classifier = knn
 	
 	input_reader = csv.reader(open('train_output.csv','rb'), delimiter=',')
 	i = 0
@@ -249,12 +251,23 @@ if __name__ == "__main__":
 		i += 1
 		print "Reading CSV (%s): Line %i" % ('trainout', i)
 	
+	
 	corpus = open("raw_train_data.txt").readlines()
 	raw_ys = raw_ys[1:]
 	y = convert_ys_to_int(raw_ys)	
+	run_k_folds_number_features(corpus, y, classifier, 3, 1, 2)
+	
+	#classifier.fit(train_xs, train_ys)
+	
+	
+	'''
+	train_xs, transform = generate_ngrams(corpus, 1, 2, 50000, False)
+	classifier.fit(train_xs, y)
+	generate_submission_bigrams(classifier, transform)
+	'''
 	#run_k_folds_n_grams(corpus, y, classifier, 5)
 	#run_k_folds_representation(corpus, y, classifier, 5)
-	run_k_folds_custom_dt(corpus, y, 5)
+	#run_k_folds_custom_dt(corpus, y, 5)
 	#print "Training."
 	#split = 0.8
 	#l = xs.shape[0]
