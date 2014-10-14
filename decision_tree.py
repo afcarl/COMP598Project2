@@ -185,7 +185,7 @@ class DecisionTree(object):
 		# If perfect classification, stop.
 		if Counter(best_test.class_dist)[0] == len(best_test.class_dist) - 1:
 			return best_test
-		if depth > 100:
+		if depth > 3:
 			return best_test
 		# Recurse on branches of best test.
 		if len(best_false) > 0:
